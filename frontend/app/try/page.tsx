@@ -150,7 +150,7 @@ const Dashboard = () => {
             <line x1="12" y1="19" x2="12" y2="23"></line>
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
-          <div>{{ summary }}</div>
+          <div>{summary.toString()}</div>
         </div>
       </main>
     </>

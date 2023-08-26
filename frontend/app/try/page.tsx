@@ -107,8 +107,8 @@ const Dashboard = () => {
     const sum = data[1];
     setSummary(sum);
     console.log(sum);
-    if (sum.length) {
-      appendTranscript(sum);
+    if (json.length) {
+      appendTranscript(json);
     }
   }, []);
   return (

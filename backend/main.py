@@ -96,10 +96,11 @@ async def determine_response(request: Request):
                 {"role": "user", "content": content},
             ],
         )
+        summary = summary["choices"][0]["message"]["content"]
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
 
-    return response, summary["choices"][0]["message"]["content"]
+    return response, summary
 
 
 @stub.function(

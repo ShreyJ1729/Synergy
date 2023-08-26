@@ -57,11 +57,14 @@ async def determine_response(request: Request):
         .message.content
     )
 
+    chat_contexts[id].append({"role": "assistant", "content": response})
+
     return response
 
 
 @stub.function(
     cpu=12,
+    concurrency_limit=5,
     memory=4096,
     gpu="A10G",
     container_idle_timeout=60,

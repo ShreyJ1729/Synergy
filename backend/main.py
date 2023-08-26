@@ -35,6 +35,11 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 
 chat_contexts = {}
 
+def find_assistant_true_index(id):
+    for i, context in enumerate(chat_contexts[id]):
+        if context['role'] == 'assistant' and 'true' in context['content']:
+            return i
+    return -1
 
 @stub.function(
     container_idle_timeout=60,
@@ -57,9 +62,38 @@ async def determine_response(request: Request):
         .message.content
     )
 
+    summary = None
+    if 'true' in response:
+        last_assitant_idx = find_assistant_true_index(id)
+        # Summarize the last few chunks
+        if last_assitant_idx != -1:
+            return -1
+        # Get all the content from the last assistant index to the end
+        # Format it where you concatenate the role: \n content \n\n
+        # Then send it to GPT-4
+
+        content = ""
+        for i in range(last_assitant_idx, len(chat_contexts[id])):
+            content += chat_contexts[id][i]['role'] + ":\n" + chat_contexts[id][i]['content'] + "\n\n"
+
+        summary = openai.ChatCompletion.create(
+            model="gpt-4",
+            temperature=0,
+            messages=[
+            {
+                "role": "system",
+                "content": "You are an AI assistant that summarizes the conversation the conversation between a user trying to brainstorm and an AI trying to keep the user on task. The user just finished a thought and you need to summarize it. Use the given conversation to do so."
+            },
+            {
+                "role": "user",
+                "content": content
+            }
+        ]
+        )
+
     chat_contexts[id].append({"role": "assistant", "content": response})
 
-    return response
+    return response, summary
 
 
 @stub.function(
@@ -91,3 +125,4 @@ async def transcribe(request: Request):
     chat_contexts[id].append({"role": "user", "content": result["text"]})
 
     return result["text"]
+

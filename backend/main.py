@@ -35,11 +35,13 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 
 stub.chat_contexts = modal.Dict.new()
 
+
 def find_assistant_true_index(id):
     for i, context in enumerate(stub.chat_contexts[id]):
-        if context['role'] == 'assistant' and 'true' in context['content']:
+        if context["role"] == "assistant" and "true" in context["content"]:
             return i
     return -1
+
 
 @stub.function(
     container_idle_timeout=60,
@@ -66,7 +68,7 @@ async def determine_response(request: Request):
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
     summary = None
-    if 'true' in response:
+    if "true" in response:
         last_assitant_idx = find_assistant_true_index(id)
         # Summarize the last few chunks
         if last_assitant_idx != -1:
@@ -77,27 +79,28 @@ async def determine_response(request: Request):
 
         content = ""
         for i in range(last_assitant_idx, len(stub.chat_contexts[id])):
-            content += stub.chat_contexts[id][i]['role'] + ":\n" + stub.chat_contexts[id][i]['content'] + "\n\n"
+            content += (
+                stub.chat_contexts[id][i]["role"]
+                + ":\n"
+                + stub.chat_contexts[id][i]["content"]
+                + "\n\n"
+            )
 
         summary = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             temperature=0,
             messages=[
-            {
-                "role": "system",
-                "content": "You are an AI assistant that summarizes the conversation the conversation between a user trying to brainstorm and an AI trying to keep the user on task. The user just finished a thought and you need to summarize it. Use the given conversation to do so."
-            },
-            {
-                "role": "user",
-                "content": content
-            }
-        ]
+                {
+                    "role": "system",
+                    "content": "You are an AI assistant that summarizes the conversation the conversation between a user trying to brainstorm and an AI trying to keep the user on task. The user just finished a thought and you need to summarize it. Use the given conversation to do so.",
+                },
+                {"role": "user", "content": content},
+            ],
         )
-
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
 
-    return response, summary['choices'][0]['message']['content']
+    return response, summary["choices"][0]["message"]["content"]
 
 
 @stub.function(

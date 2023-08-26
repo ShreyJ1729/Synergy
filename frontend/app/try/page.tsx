@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import RecorderNode from "./recorder-node";
 import Navbar from "../navbar";
+import { talkBack } from './eleven'
 
 let mediaRecorder: MediaRecorder | null = null;
 let recordedChunks = [];

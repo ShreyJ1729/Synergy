@@ -1,5 +1,5 @@
 """
-Speech-to-text transcriptiong service based on OpenAI Whisper.
+Speech-to-text transcripting service based on OpenAI Whisper.
 """
 
 import tempfile
@@ -9,7 +9,7 @@ from modal import Image, method
 
 from common import stub
 
-MODEL_NAME = "base.en"
+MODEL_NAME = "large"
 
 
 def download_model():

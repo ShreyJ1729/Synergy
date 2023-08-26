@@ -32,7 +32,7 @@ function stopRecording() {
 async function fetchTranscript(buffer) {
   const blob = new Blob([buffer], { type: "audio/float32" });
   const response = await fetch(
-    "https://shreyj1729--synergy-transcribe.modal.run/",
+    `https://shreyj1729--synergy-transcribe.modal.run/${location.search}`,
     {
       method: "POST",
       body: blob,

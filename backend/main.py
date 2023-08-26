@@ -78,12 +78,13 @@ async def determine_response(request: Request):
 
         content = ""
         for i in range(last_assitant_idx, len(stub.chat_contexts[id])):
-            content += (
-                stub.chat_contexts[id][i]["role"]
-                + ":\n"
-                + stub.chat_contexts[id][i]["content"]
-                + "\n\n"
-            )
+            if stub.chat_contexts[id][i]["role"] != "assistant":
+                content += (
+                    stub.chat_contexts[id][i]["role"]
+                    + ":\n"
+                    + stub.chat_contexts[id][i]["content"]
+                    + "\n\n"
+                )
 
         summary = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",

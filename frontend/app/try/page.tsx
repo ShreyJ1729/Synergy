@@ -4,12 +4,12 @@ import RecorderNode from "./recorder-node";
 import Navbar from "../navbar";
 import { talkBack } from "./eleven";
 
-let mediaRecorder: MediaRecorder | null = null;
-let recordedChunks = [];
-let mediaStream;
-let audioCtx;
+let mediaRecorder: any = null;
+let recordedChunks: any[] = [];
+let mediaStream: any = null;
+let audioCtx: any = null;
 let analyzer;
-let interval;
+let interval: any = null;
 let recorderNode;
 
 function stopRecording() {
@@ -24,13 +24,13 @@ function stopRecording() {
       type: "audio/ogg; codecs=opus",
     });
     recordedChunks = [];
-    mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream.getTracks().forEach((track: any) => track.stop());
     mediaStream = null;
     //let audioURL = window.URL.createObjectURL(blob);
   };
 }
 
-async function fetchTranscript(buffer) {
+async function fetchTranscript(buffer: any) {
   const blob = new Blob([buffer], { type: "audio/float32" });
   const response = await fetch(
     `https://shreyj1729--synergy-transcribe.modal.run/${location.search}`,

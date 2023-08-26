@@ -9,7 +9,7 @@ from modal import Image, method
 
 from common import stub
 
-MODEL_NAME = "large"
+MODEL_NAME = "medium"
 
 
 def download_model():

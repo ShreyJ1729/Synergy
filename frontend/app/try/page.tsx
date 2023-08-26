@@ -103,11 +103,12 @@ const Dashboard = () => {
 
   const onSegmentRecv = useCallback(async (buffer) => {
     const data = await fetchTranscript(buffer);
-    data = data[0];
-    summary = data[0];
-    setSummary(summary);
-    if (data.length) {
-      appendTranscript(data);
+    const json = data[0];
+    const sum = data[1];
+    setSummary(sum);
+    console.log(sum);
+    if (sum.length) {
+      appendTranscript(sum);
     }
   }, []);
   return (

@@ -1,7 +1,7 @@
 const VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
 
 export async function talkBack(text) {
-  const stream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
+  const stream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
   { 
     method: 'POST', 
     headers: { 
@@ -31,4 +31,8 @@ export async function talkBack(text) {
     source.connect(context.destination)
     source.start(0)
   })
+}
+
+if(typeof window !== 'undefined') {
+  window.talkBack = talkBack
 }

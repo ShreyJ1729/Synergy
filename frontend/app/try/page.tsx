@@ -103,9 +103,12 @@ const Dashboard = () => {
 
   const onSegmentRecv = useCallback(async (buffer) => {
     const data = await fetchTranscript(buffer);
-    setSummary(data[0]);
-    if (data.length) {
-      appendTranscript(data);
+    const json = data[0];
+    const sum = data[1];
+    setSummary(sum);
+    console.log(sum);
+    if (json.length) {
+      appendTranscript(json);
     }
   }, []);
   return (
@@ -147,7 +150,7 @@ const Dashboard = () => {
             <line x1="12" y1="19" x2="12" y2="23"></line>
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
-          <div>{{ summary }}</div>
+          <div>{summary.toString()}</div>
         </div>
       </main>
     </>

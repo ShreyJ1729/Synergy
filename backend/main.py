@@ -61,7 +61,28 @@ async def determine_response(request: Request):
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
 
-    return response
+        content = ""
+        for i in range(last_assitant_idx, len(stub.chat_contexts[id])):
+            content += stub.chat_contexts[id][i]['role'] + ":\n" + stub.chat_contexts[id][i]['content'] + "\n\n"
+
+        summary = openai.ChatCompletion.create(
+            model="gpt-4",
+            temperature=0,
+            messages=[
+            {
+                "role": "system",
+                "content": "You are an AI assistant that summarizes the conversation the conversation between a user trying to brainstorm and an AI trying to keep the user on task. The user just finished a thought and you need to summarize it. Use the given conversation to do so."
+            },
+            {
+                "role": "user",
+                "content": content
+            }
+        ]
+        )
+
+    stub.chat_contexts[id].append({"role": "assistant", "content": response})
+
+    return response, summary['choices'][0]['message']['content']
 
 
 @stub.function(

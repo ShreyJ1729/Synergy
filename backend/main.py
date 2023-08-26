@@ -35,6 +35,11 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 
 stub.chat_contexts = modal.Dict.new()
 
+def find_assistant_true_index(id):
+    for i, context in enumerate(stub.chat_contexts[id]):
+        if context['role'] == 'assistant' and 'true' in context['content']:
+            return i
+    return -1
 
 @stub.function(
     container_idle_timeout=60,
@@ -60,6 +65,15 @@ async def determine_response(request: Request):
     )
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
+    summary = None
+    if 'true' in response:
+        last_assitant_idx = find_assistant_true_index(id)
+        # Summarize the last few chunks
+        if last_assitant_idx != -1:
+            return -1
+        # Get all the content from the last assistant index to the end
+        # Format it where you concatenate the role: \n content \n\n
+        # Then send it to GPT-4
 
         content = ""
         for i in range(last_assitant_idx, len(stub.chat_contexts[id])):
@@ -79,6 +93,7 @@ async def determine_response(request: Request):
             }
         ]
         )
+
 
     stub.chat_contexts[id].append({"role": "assistant", "content": response})
 

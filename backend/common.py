@@ -10,12 +10,13 @@ mounts = [
 
 image = (
     modal.Image.debian_slim()
-    .pip_install_from_requirements("requirements.txt")
-    .run_commands(
-        "apt-get update",
-        "apt-get install -y git",
-        "cd /root && git clone https://github.com/ggerganov/llama.cpp",
-        "cd /root/llama.cpp && make",
+    .apt_install("git", "ffmpeg")
+    .pip_install(
+        "openai",
+        "python-dotenv",
+        "https://github.com/openai/whisper/archive/v20230314.tar.gz",
+        "ffmpeg-python",
+        "numpy",
     )
 )
 

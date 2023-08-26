@@ -22,14 +22,15 @@ async function getGptResponse() {
   if (!resp.ok) {
     console.error("Error occurred during GPT response: " + resp.status);
   }
-  const r = await resp.json();
-  if(typeof r === "string") {
+  const [gptResponse, summary] = await resp.json();
+  if(typeof gptResponse === "string") {
     try {
-      return JSON.parse(r)
+      return [JSON.parse(gptResponse), summary]
     } catch (e) {
-      return r
+      return [gptResponse, summary]
     }
   }
+  return [gptResponse, summary]
 }
 
 async function fetchTranscript(buffer) {
@@ -68,13 +69,19 @@ const Dashboard = () => {
   const [gptResponse, setGptResponse] = useState(null);
   const [summary, setSummary] = useState(null);
   const [gptQueued, setGptQueued] = useState(false);
-
+  const [isGptRunning, setIsGptRunning] = useState(false);
 
   const chatBoxRef = useRef<HTMLDivElement>(null);
+  
   const runGpt = useCallback(async () => {
+    if (isGptRunning) {
+      return;
+    }
+    setIsGptRunning(true);
     const resp = await getGptResponse();
+    console.log(resp)
 
-    const gptResponse = resp;
+    const [gptResponse, summary] = resp;
     if (gptResponse) {
       setGptResponse(gptResponse);
     }
@@ -82,7 +89,8 @@ const Dashboard = () => {
     if((gptResponse?.should_we_speak === true || gptResponse?.should_we_speak === 'true') && gptResponse?.generated?.length) {
       await talkBack(gptResponse.generated)
     }
-  }, [gptQueued]);
+    setIsGptRunning(false);
+  }, [gptQueued, isGptRunning]);
 
   async function onMount() {
     onSegmentRecv(new Float32Array());
@@ -98,7 +106,6 @@ const Dashboard = () => {
       () => {
         setIsSilence(true);
         setIsTalking(false);
-        runGpt();
       },
       () => {
         setIsSilence(false);
@@ -135,6 +142,7 @@ const Dashboard = () => {
       const data = await fetchTranscript(buffer)
       appendTranscript(data);
       setGptQueued(true);
+      runGpt();
     }, []
   );
   // const { transcript: tr } = useWhisper({

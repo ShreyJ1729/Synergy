@@ -2,7 +2,7 @@ const SILENCE_THRESHOLD = 0.015;
 const SAMPLE_RATE = 48000;
 const CHANNEL_DATA_LENGTH = 128;
 const MAX_SEGMENT_LENGTH = 10; // seconds
-const MIN_TALKING_TIME = 1; // seconds
+const MIN_TALKING_TIME = 5; // seconds
 const AMPLITUDE_WINDOW = 0.5; // seconds
 
 class WorkletProcessor extends AudioWorkletProcessor {

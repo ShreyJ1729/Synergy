@@ -9,6 +9,8 @@ import modal
 
 from common import stub
 from transcriber import Whisper
+from pydantic import BaseModel
+from fastapi import FastAPI, Request
 
 
 @stub.function(
@@ -16,8 +18,7 @@ from transcriber import Whisper
     timeout=600,
 )
 @modal.web_endpoint(method="POST")
-async def transcribe():
-    from fastapi import FastAPI, Request
+async def transcribe(request: Request):
     from fastapi.responses import Response, StreamingResponse
     from fastapi.staticfiles import StaticFiles
 

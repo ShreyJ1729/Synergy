@@ -52,6 +52,7 @@ const Dashboard = () => {
   const recorderNodeRef = useRef<RecorderNode>(null);
   const [isTalking, setIsTalking] = useState(false);
   const [isSilence, setIsSilence] = useState(false);
+  const [summary, setSummary] = useState("");
   const chatBoxRef = useRef<HTMLDivElement>(null);
   async function onMount() {
     onSegmentRecv(new Float32Array());
@@ -93,7 +94,7 @@ const Dashboard = () => {
   const [transcript, setTranscript] = useState([]);
 
   const appendTranscript = useCallback(
-    (data: any) => {
+    (data) => {
       setTranscript((transcript) => [...transcript, data?.trim()]);
       setTimeout(() => chatBoxRef.current.scrollTo(0, 99999), 100);
     },
@@ -102,6 +103,7 @@ const Dashboard = () => {
 
   const onSegmentRecv = useCallback(async (buffer) => {
     const data = await fetchTranscript(buffer);
+    setSummary(data[0]);
     if (data.length) {
       appendTranscript(data);
     }
@@ -109,12 +111,12 @@ const Dashboard = () => {
   return (
     <>
       <Navbar />
-      <main className="p-4 h-screen w-full">
+      <main className="w-full h-screen p-4">
         <div className="absolute -translate-y-1/4 -translate-x-20 h-[400px] w-[1000px] rounded-full bg-gradient-to-tr from-[#00306088] via-[#1b998b88] to-[#ade25d11] blur-[250px] content-[''] z-[-1]"></div>
-        <div className="flex gap-2 flex-col items-center">
+        <div className="flex flex-col items-center gap-2">
           <div
             ref={chatBoxRef}
-            className="overflow-y-auto h-24"
+            className="h-24 overflow-y-auto"
             style={{
               WebkitMaskImage:
                 transcript.length >= 4 &&
@@ -145,6 +147,7 @@ const Dashboard = () => {
             <line x1="12" y1="19" x2="12" y2="23"></line>
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
+          <div>{{ summary }}</div>
         </div>
       </main>
     </>

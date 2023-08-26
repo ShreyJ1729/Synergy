@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: modal
+Version: 0.51.3192
+Summary: Dummy alias that requires modal-client
+Author: Modal Labs
+Author-email: erik@modal.com
+Project-URL: Homepage, https://modal.com
+Description-Content-Type: text/markdown
+Requires-Dist: modal-client (==0.51.3192)
+
+This package is a dummy package that just requires the modal-client package.
+If you're looking for the active learning framework [modAL](https://modal-python.readthedocs.io/en/latest/),
+it's now available using the package name `modAL-python`.

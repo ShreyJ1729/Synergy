@@ -24,8 +24,8 @@ SYSTEM_PROMPT = """
 Criteria for when we should speak:
 - if user is going off on too many different tangents, interrupt them, because you're supposed to help them brainstorm productively
 - if user strays from their original intention, keep them on topic, be blunt if they get distracted.
-- if you think we have enough information about key features / entities / attributes of what the person is talking about. 
- If you don't think we have enough information yet, KEEP LISTENING and respond with should_we_speak: false. We don't want to make a meaningless conversation.
+- if you think we have enough information about key features / entities / attributes of what the person is talking about.
+- if the user is unclear about something they're talking about.
 Structure your responses as such:
 {"should_we_speak":"true/false", "generated": "<your response to user>"}
 """
@@ -33,7 +33,7 @@ Structure your responses as such:
 dotenv.load_dotenv(".env")
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
-chat_contexts = {}
+stub.chat_contexts = modal.Dict.new()
 
 
 @stub.function(
@@ -43,10 +43,12 @@ chat_contexts = {}
 @modal.web_endpoint(method="POST")
 async def determine_response(request: Request):
     id = request.query_params["id"]
+    print(stub.chat_contexts)
+
     response = (
         openai.ChatCompletion.create(
-            model="gpt-4-0613",
-            messages=chat_contexts[id],
+            model="gpt-3.5-turbo",
+            messages=stub.chat_contexts[id],
             temperature=0.75,
             max_tokens=250,
             top_p=1,
@@ -57,37 +59,156 @@ async def determine_response(request: Request):
         .message.content
     )
 
-    chat_contexts[id].append({"role": "assistant", "content": response})
+    stub.chat_contexts[id].append({"role": "assistant", "content": response})
 
     return response
 
 
 @stub.function(
-    cpu=12,
-    concurrency_limit=5,
-    memory=4096,
+    cpu=8,
     gpu="A10G",
-    container_idle_timeout=60,
-    timeout=60,
+    timeout=10,
 )
 @modal.web_endpoint(method="POST")
 async def transcribe(request: Request):
-    from fastapi.responses import Response, StreamingResponse
-    from fastapi.staticfiles import StaticFiles
+    print(f"streaming transcription of audio to client...")
+    audio_data = await request.body()
+    return StreamingResponse(stream_whisper(audio_data), media_type="text/event-stream")
 
-    transcriber = Whisper()
-    bytes = await request.body()
-    id = request.query_params["id"]
 
-    result = transcriber.transcribe_segment.call(bytes)
-    if id not in chat_contexts:
-        chat_contexts[id] = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            }
-        ]
+# ---
+# runtimes: ["runc", "gvisor"]
+# ---
+import asyncio
+import io
+import logging
+import pathlib
+import re
+import tempfile
+import time
+from typing import Iterator
 
-    chat_contexts[id].append({"role": "user", "content": result["text"]})
+import modal
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 
-    return result["text"]
+
+def load_audio(data: bytes, sr: int = 16000):
+    import ffmpeg
+    import numpy as np
+
+    try:
+        fp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        fp.write(data)
+        fp.close()
+        # This launches a subprocess to decode audio while down-mixing and resampling as necessary.
+        # Requires the ffmpeg CLI and `ffmpeg-python` package to be installed.
+        out, _ = (
+            ffmpeg.input(fp.name, threads=0)
+            .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=sr)
+            .run(
+                cmd=["ffmpeg", "-nostdin"],
+                capture_stdout=True,
+                capture_stderr=True,
+            )
+        )
+    except ffmpeg.Error as e:
+        raise RuntimeError(f"Failed to load audio: {e.stderr.decode()}") from e
+
+    return np.frombuffer(out, np.int16).flatten().astype(np.float32) / 32768.0
+
+
+def split_silences(
+    path: str, min_segment_length: float = 30.0, min_silence_length: float = 0.8
+) -> Iterator[tuple[float, float]]:
+    """
+    Split audio file into contiguous chunks using the ffmpeg `silencedetect` filter.
+    Yields tuples (start, end) of each chunk in seconds.
+
+    Parameters
+    ----------
+    path: str
+        path to the audio file on disk.
+    min_segment_length : float
+        The minimum acceptable length for an audio segment in seconds. Lower values
+        allow for more splitting and increased parallelizing, but decrease transcription
+        accuracy. Whisper models expect to transcribe in 30 second segments, so this is the
+        default minimum.
+    min_silence_length : float
+        Minimum silence to detect and split on, in seconds. Lower values are more likely to split
+        audio in middle of phrases and degrade transcription accuracy.
+    """
+    import ffmpeg
+
+    silence_end_re = re.compile(
+        r" silence_end: (?P<end>[0-9]+(\.?[0-9]*)) \| silence_duration: (?P<dur>[0-9]+(\.?[0-9]*))"
+    )
+
+    metadata = ffmpeg.probe(path)
+    duration = float(metadata["format"]["duration"])
+
+    reader = (
+        ffmpeg.input(str(path))
+        .filter("silencedetect", n="-10dB", d=min_silence_length)
+        .output("pipe:", format="null")
+        .run_async(pipe_stderr=True)
+    )
+
+    cur_start = 0.0
+    num_segments = 0
+
+    while True:
+        line = reader.stderr.readline().decode("utf-8")
+        if not line:
+            break
+        match = silence_end_re.search(line)
+        if match:
+            silence_end, silence_dur = match.group("end"), match.group("dur")
+            split_at = float(silence_end) - (float(silence_dur) / 2)
+
+            if (split_at - cur_start) < min_segment_length:
+                continue
+
+            yield cur_start, split_at
+            cur_start = split_at
+            num_segments += 1
+
+    # silencedetect can place the silence end *after* the end of the full audio segment.
+    # Such segments definitions are negative length and invalid.
+    if duration > cur_start and (duration - cur_start) > min_segment_length:
+        yield cur_start, duration
+        num_segments += 1
+    print(f"Split {path} into {num_segments} segments")
+
+
+@stub.function(cpu=2)
+def transcribe_segment(
+    audio_data: bytes,
+    model: str,
+):
+    import torch
+    import whisper
+
+    t0 = time.time()
+    use_gpu = torch.cuda.is_available()
+    device = "cuda" if use_gpu else "cpu"
+    model = whisper.load_model(model, device=device)
+    np_array = load_audio(audio_data)
+    result = model.transcribe(np_array, language="en", fp16=use_gpu)  # type: ignore
+
+    return result
+
+
+async def stream_whisper(audio_data: bytes):
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        f.write(audio_data)
+        f.flush()
+        segment_gen = split_silences(f.name)
+
+    for result in transcribe_segment.starmap(
+        segment_gen, kwargs=dict(audio_data=audio_data, model="base.en")
+    ):
+        # Must cooperatively yeild here otherwise `StreamingResponse` will not iteratively return stream parts.
+        # see: https://github.com/python/asyncio/issues/284
+        await asyncio.sleep(0.5)
+        yield result["text"]

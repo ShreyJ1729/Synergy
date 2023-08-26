@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import RecorderNode from "./recorder-node";
+import Navbar from "../navbar";
 
 let mediaRecorder: MediaRecorder | null = null;
 let recordedChunks = [];
@@ -50,6 +51,7 @@ const Dashboard = () => {
   const recorderNodeRef = useRef<RecorderNode>(null);
   const [isTalking, setIsTalking] = useState(false);
   const [isSilence, setIsSilence] = useState(false);
+  const chatBoxRef = useRef<HTMLDivElement>(null);
   async function onMount() {
     onSegmentRecv(new Float32Array());
     let constraints = { audio: true };
@@ -76,6 +78,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     onMount();
+    recorderNodeRef.current?.start();
   }, []);
 
   useEffect(() => {
@@ -91,8 +94,9 @@ const Dashboard = () => {
   const appendTranscript = useCallback(
     (data) => {
       setTranscript((transcript) => ([...transcript, data?.trim()]));
+      setTimeout(() => chatBoxRef.current.scrollTo(0, 99999), 100);
     },
-    [transcript]
+    [transcript, chatBoxRef]
   );
   
   const onSegmentRecv = useCallback(
@@ -104,10 +108,13 @@ const Dashboard = () => {
     }, []
   );
   return (
-    <main className="h-screen w-full bg-gray-200">
-      <button onClick={() => setIsRecording(!isRecording)}>
+    <>
+    <Navbar />
+    <main className="p-4 h-screen w-full">
+    <div className="absolute -translate-y-1/4 -translate-x-20 h-[400px] w-[1000px] rounded-full bg-gradient-to-tr from-[#00306088] via-[#1b998b88] to-[#ade25d11] blur-[250px] content-[''] z-[-1]"></div>
+      <div className='flex gap-2'>
         <svg
-          className={`fill-none inline ${isRecording ? "!stroke-red-500" : ""}`}
+          className={`my-auto fill-none inline ${isTalking ? "!stroke-red-500" : ""}`}
           xmlns="http://www.w3.org/2000/svg"
           width="24"
           height="24"
@@ -123,11 +130,12 @@ const Dashboard = () => {
           <line x1="12" y1="19" x2="12" y2="23"></line>
           <line x1="8" y1="23" x2="16" y2="23"></line>
         </svg>
-      </button>
-      {isTalking && <div>talking</div>}
-      {isSilence && <div>silence</div>}
-      <div>{transcript.map((t) => (<p>{t}</p>))}</div>
+        <div ref={chatBoxRef} className="overflow-y-auto h-24" style={{
+          WebkitMaskImage: transcript.length >= 4 && '-webkit-gradient(linear, left top, left bottom, from(rgba(0,0,0,0)), to(rgba(0,0,0,1)))'
+        }}>{transcript.map((t, i) => (<p key={i}>{t}</p>))}</div>
+      </div>
     </main>
+    </>
   );
 };
 

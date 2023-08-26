@@ -64,7 +64,6 @@ async def determine_response(request: Request):
         .message.content
     )
 
-    stub.chat_contexts[id].append({"role": "assistant", "content": response})
     summary = None
     if 'true' in response:
         last_assitant_idx = find_assistant_true_index(id)

@@ -86,22 +86,23 @@ const Dashboard = () => {
     }
   }, [isRecording]);
 
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscript] = useState([]);
 
   const appendTranscript = useCallback(
     (data) => {
-      setTranscript((transcript) => transcript + data?.trim());
+      setTranscript((transcript) => ([...transcript, data?.trim()]));
     },
     [transcript]
   );
-
-  const onSegmentRecv = useCallback(async (buffer) => {
-    const data = await fetchTranscript(buffer);
-    if (data.length) {
-      appendTranscript(data);
-    }
-  }, []);
-
+  
+  const onSegmentRecv = useCallback(
+    async (buffer) => { 
+      const data = await fetchTranscript(buffer);
+      if (data.length) {
+        appendTranscript(data);
+      }
+    }, []
+  );
   return (
     <main className="h-screen w-full bg-gray-200">
       <button onClick={() => setIsRecording(!isRecording)}>
@@ -125,7 +126,7 @@ const Dashboard = () => {
       </button>
       {isTalking && <div>talking</div>}
       {isSilence && <div>silence</div>}
-      <div>{transcript}</div>
+      <div>{transcript.map((t) => (<p>{t}</p>))}</div>
     </main>
   );
 };
